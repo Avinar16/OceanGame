@@ -8,12 +8,15 @@ public class PlayerMovementScript : MonoBehaviour
 
     #region MovementVariables
     private Rigidbody PlayerRigidbody;
+    private CapsuleCollider PlayerCollider;
     private float Speed;
 
     [Header("Ground movement settings")]
     public float WalkSpeed;
     public float RunSpeed;
+    private float AirSpeed;
     [SerializeField] private float GroundDrag;
+
     [Space]
     [Header("Jump Settings")]
     public float JumpForce;
@@ -22,12 +25,14 @@ public class PlayerMovementScript : MonoBehaviour
     [SerializeField] private float GroundCheckRadius;
     [SerializeField] private LayerMask WhatIsGround;
     [SerializeField] private float AirDrag;
+
     [Space]
     [Header("Slope movement settings")]
-    public RaycastHit SlopeHit;
-    [SerializeField]private float SlopeRayDistance;
+    [SerializeField] private float SlopeRayDistance;
+    [SerializeField] private float MaxSlopeAngle;
+    
+    
     #endregion
-
     private PlayerInputActions Input;
     private MovementUtilityFuncs MoveFuncs;
 
@@ -38,52 +43,48 @@ public class PlayerMovementScript : MonoBehaviour
     {
         Walking,
         Running,
-        InAir
+        InAir,
+        Swimming
     }
 
     private void StateHandler()
     {
         if(IsGrounded && Input.Player.Run.IsPressed())
         {
-            PlayerRigidbody.drag = GroundDrag;
             State = MoveState.Running;
+
+            PlayerRigidbody.drag = GroundDrag;
             Speed = RunSpeed;
+            // Air speed = / 2 current speed
+            AirSpeed = RunSpeed / 2;
         }
         else if (IsGrounded)
         {
-            PlayerRigidbody.drag = GroundDrag;
             State = MoveState.Walking;
+
+            PlayerRigidbody.drag = GroundDrag;
             Speed = WalkSpeed;
+            // Air speed = / 2 current speed
+            AirSpeed = WalkSpeed / 2;
         }
         else
         {
-            PlayerRigidbody.drag = AirDrag;
-
-            if(State == MoveState.Running) { Speed = RunSpeed / 2; }
-            else { Speed = WalkSpeed / 2; }
-
             State = MoveState.InAir;
-            
-        }
-    }
-    
 
-    private void SetPlayerInput()
-    {
-        Cursor.lockState = CursorLockMode.Locked;
-        Input.Disable();
-        Input.Player.Enable();
-        // Connect Jump
-        Input.Player.Jump.performed += ctx => Jump();
+            PlayerRigidbody.drag = AirDrag;
+            Speed = AirSpeed;  
+        }
     }
 
     private void Awake()
     {
         PlayerRigidbody = GetComponent<Rigidbody>();
+        PlayerCollider = GetComponentInChildren<CapsuleCollider>();
 
         // Setup input
-        Input = new PlayerInputActions();
-        SetPlayerInput();
+        InputHandler.InputManager.SetPlayerControls();
+        Input = InputHandler.InputManager.Input;
+        Input.Player.Jump.performed += ctx => Jump();
 
         // setup funcs
         MoveFuncs = new MovementUtilityFuncs();
@@ -101,36 +102,27 @@ public class PlayerMovementScript : MonoBehaviour
         Vector2 direction = Input.Player.Move.ReadValue<Vector2>();
         // default move vector
         Vector3 moveVector = (transform.forward * direction.y) + (transform.right * direction.x);
-        if (OnSlope())
-        {
+
+        if (MoveFuncs.OnSlope(PlayerRigidbody, MaxSlopeAngle, IsGrounded, PlayerCollider))
+        { 
             // slope move vector
-            moveVector = Vector3.ProjectOnPlane(moveVector, SlopeHit.normal);
-            Debug.Log(SlopeHit.normal);
+            moveVector = Vector3.ProjectOnPlane(moveVector, MoveFuncs.SlopeHit.normal);
+            MoveSpeed *= 2;
+           
         }
         PlayerRigidbody.AddForce(moveVector.normalized * MoveSpeed * 10, ForceMode.Force);
     }
 
-    private void CheckIfGrounded()
-    {
-        IsGrounded = Physics.CheckSphere(GroundCheckPos.position, GroundCheckRadius, WhatIsGround);
-    }
 
     private void FixedUpdate()
     {
-        CheckIfGrounded();
+        IsGrounded = MoveFuncs.CheckIfGrounded(GroundCheckPos, GroundCheckRadius, WhatIsGround);
         StateHandler();
         Move(Speed);
         MoveFuncs.SpeedLimit(PlayerRigidbody, Speed);
         
     }
-    private bool OnSlope()
-    {
-        if (Physics.Raycast(transform.position, Vector3.down, out SlopeHit, SlopeRayDistance))
-        {
-            if (SlopeHit.normal != Vector3.up) { return true; }
-        }
-        return false;
-    }
+
 
 
 
