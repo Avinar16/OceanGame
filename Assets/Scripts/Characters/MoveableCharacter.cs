@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MoveableObject : MonoBehaviour
+public class MoveableCharacter : MonoBehaviour
 {
     protected RaycastHit SlopeHit;
     protected void SpeedLimit(Rigidbody Rb, float Speed)
@@ -19,7 +19,7 @@ public class MoveableObject : MonoBehaviour
         //if (Physics.Raycast(transform.position, Vector3.down, out SlopeHit, SlopeRayDistance) && isGrounded)
         float sphereCastRadius = _Collider.radius * 1.35f;
         float sphereCastDistance = _Collider.bounds.extents.y - sphereCastRadius + 0.05f;
-        if(Physics.SphereCast(_rb.position, sphereCastRadius, Vector3.down, out SlopeHit, sphereCastDistance))
+        if (Physics.SphereCast(_rb.position, sphereCastRadius, Vector3.down, out SlopeHit, sphereCastDistance))
         {
             float angle = Vector3.Angle(Vector3.up, SlopeHit.normal);
             if (angle < MaxSlopeAngle && angle != 0) { return true; }

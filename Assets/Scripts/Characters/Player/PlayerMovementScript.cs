@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerMovementScript : MonoBehaviour
+public class PlayerMovementScript : MoveableCharacter
 {
 
     #region MovementVariables
@@ -34,7 +34,6 @@ public class PlayerMovementScript : MonoBehaviour
     
     #endregion
     private PlayerInputActions Input;
-    private MovementUtilityFuncs MoveFuncs;
 
     // player states
     [HideInInspector]
@@ -85,9 +84,6 @@ public class PlayerMovementScript : MonoBehaviour
         InputHandler.InputManager.SetPlayerControls();
         Input = InputHandler.InputManager.Input;
         Input.Player.Jump.performed += ctx => Jump();
-
-        // setup funcs
-        MoveFuncs = new MovementUtilityFuncs();
     }
     private void Jump()
     {
@@ -103,10 +99,10 @@ public class PlayerMovementScript : MonoBehaviour
         // default move vector
         Vector3 moveVector = (transform.forward * direction.y) + (transform.right * direction.x);
 
-        if (MoveFuncs.OnSlope(PlayerRigidbody, MaxSlopeAngle, IsGrounded, PlayerCollider))
+        if (IsOnSlope(PlayerRigidbody, MaxSlopeAngle, IsGrounded, PlayerCollider))
         { 
             // slope move vector
-            moveVector = Vector3.ProjectOnPlane(moveVector, MoveFuncs.SlopeHit.normal);
+            moveVector = Vector3.ProjectOnPlane(moveVector, SlopeHit.normal);
             MoveSpeed *= 2;
            
         }
@@ -116,22 +112,12 @@ public class PlayerMovementScript : MonoBehaviour
 
     private void FixedUpdate()
     {
-        IsGrounded = MoveFuncs.CheckIfGrounded(GroundCheckPos, GroundCheckRadius, WhatIsGround);
+        IsGrounded = CheckIfGrounded(GroundCheckPos, GroundCheckRadius, WhatIsGround);
         StateHandler();
         Move(Speed);
-        MoveFuncs.SpeedLimit(PlayerRigidbody, Speed);
+        SpeedLimit(PlayerRigidbody, Speed);
         
     }
 
 
-
-
-    /* In development
-    private void SetUIiInput()
-    {
-        Cursor.lockState = CursorLockMode.Confined;
-        Input.Disable();
-        Input.UI.Enable();
-    }
-    */
 }
